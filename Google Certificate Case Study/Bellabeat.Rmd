@@ -1,0 +1,306 @@
+---
+title: "Google Certificate Case Study"
+author: "Alejandro Hernandez"
+date: "2024-02-17"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Bellabeat case
+  
+### Escenario: 
+  
+* Trabajo en una empresa llamada _Bellabeat_:<img src="C:\Users\magno\OneDrive\Escritorio\Curso Análisis de datos\Modulo 8\bellabeat_logo.png" width=80 lenght=300/> Una empresa dedicada a los dispositivos inteligentes enforcados en la salud, mi trabajo es como junior data analyst.
+* Se me pide analizar datos sobre el uso de los dispisitivos inteligentes enforcados en la salud para conocer tendecias de uso de los usuarios.
+* Los personas involucradas son: 
+  + Urška Sršen: Cofundador y Chief Creative Officer
+  + Sando Mur: Matemático y cofundador; miembro clave del equipo ejecutivo de Bellabeat
+  + Equipo de analytics y,
+  + Equipo de marketing de Bellabeat
+  
+### Fase 1: Ask
+
+#### Business task:
+Conocer las tendencias del mercado de los dispositivos inteligentes en la salud para aplicarlas en mejorar la expericencia de los clientes de Bellabeat y a orientar la estrategia de marketing.
+
+#### Stakeholders:
+* Urška Sršen: Cofundador y Chief Creative Officer.
+* Sando Mur: Matemático y cofundador; miembro clave del equipo ejecutivo de Bellabeat.
+* Equipo de analytics y de marketing de Bellabeat.
+  
+### Fase 2: Prepare
+
+Este análisis se realizó en Rstudio. Se ocuparon los siguiente packeages:
+
+* tidyverse
+* markdown
+* janitor
+* lubridate
+
+```{r message=FALSE}
+library(tidyverse)
+library(rmarkdown)
+library(janitor)
+library(lubridate)
+```
+Se ocupó el dataset FitBit Fitness Tracker Data obtenido de Kaggle [Link a la página](https://www.kaggle.com/datasets/arashnic/fitbit/data), los cuales fueron publicados por el usuario de Kaggle: MÖBIUS. 
+De igual forma, comparte la liga a la fuente original de los datos [Link a la página](https://zenodo.org/records/53894#.X9oeh3Uzaao).  
+Cuenta con 18 documentos en formato .csv.
+
+```{r message=FALSE}
+daily_activity <- read_csv("C:\\Users\\magno\\OneDrive\\Escritorio\\Curso Análisis de datos\\Modulo 8\\Fitabase Data 4.12.16-5.12.16\\dailyActivity_merged.csv")
+sleep_day_merged <- read_csv("C:\\Users\\magno\\OneDrive\\Escritorio\\Curso Análisis de datos\\Modulo 8\\Fitabase Data 4.12.16-5.12.16\\sleepDay_merged.csv")
+```
+### Fase 3: Process
+
+Los pasos que se siguieron para realizar la limpieza de datos fueron los siguientes:
+
+* Cargar los packeages a usar.
+* Cargar los datos con la función read_csv().
+* Se exploró los datos con la función head() y str().
+
+```{r}
+head(daily_activity)
+str(daily_activity)
+head(sleep_day_merged)
+str(sleep_day_merged)
+```
+
+* Se uso la función summary() para buscar errores de falta de datos en las columnas numéricas.
+```{r}
+summary(daily_activity)
+summary(sleep_day_merged)
+```
+
+* Se cambio los nombres de las columnas a un formato más estandarizado respetando las buenas prácticas generales en R.
+```{r}
+daily_activity <- clean_names(daily_activity)
+sleep_day_merged <- clean_names(sleep_day_merged)
+```
+
+* Se utilizó la función mdy() para cambiar el tipo de datos la columna activity_date del dataframe daily_activity de “Character” a “Date”.
+* Se utilizó la función mdy_hms() para cambiar la columna sleep_date de “Character” a “Date/Time” a “Date”.
+```{r}
+daily_activity$activity_date <- mdy(daily_activity$activity_date)
+sleep_day_merged$sleep_day <- mdy_hms(sleep_day_merged$sleep_day)
+sleep_day_merged$sleep_day <- as.Date(sleep_day_merged$sleep_day)
+```
+
+* Se utilizó la función get_dupes() para buscar duplicados con los “id” y “activity_date” ya que se tiene que tener un registro por persona (id) en cada fecha (activity_date).
+* De igual forma, se ocupó la función get_dupes() para buscar duplicados en el data frame sleep_day_merged, utilizando las columnas id y sleep_day.
+```{r}
+get_dupes(daily_activity, id, activity_date)
+get_dupes(sleep_day_merged, id, sleep_day)
+```
+* Se eliminaron los registros duplicados encontrados con la función distinct().
+```{r}
+sleep_day_merged <- sleep_day_merged %>% 
+  distinct()
+```
+* Finalmente, se realizó otra exploración de datos para confirmar que se haya realizo todo correctamente y no haya algún paso más por realizar.
+
+### Fase 4: Analyze 
+
+#### Análisis de los datos de la actividad diaria
+
+Los datos que se analizaron de la acitvidad diaria de las personas son: las calorías diarías quemadas, los minutos que pasan sedentarios, los minutos en una actividad física ligera, moderada e intensa (daily_activity).
+
+##### Actividad física intensa 
+
+Primero se hizo una correlacion entre los minutos que las personas pasaban en una acividad física intensa y las calorías gastadas.  
+
+De estos datos podemos saber qué:
+
+* La media de la acitivdad física intensa es de 21.16 minutos díarios.
+* El valor mínimo es de 0 y el máximo es de 210 minutos.
+* El 50% de los datos se encuentran entre 0 y 32 minutos.
+* La mediana de los datos es de 4 minutos.
+* La correlación entre los minutos de actividad física intensa y las calorías es positiva, con un valor de .615.
+
+```{r}
+ggplot(data = daily_activity)+
+  geom_point(mapping = aes(x=very_active_minutes, y=calories), color="blue")+
+  geom_smooth(mapping = aes(x=very_active_minutes, y=calories),method=lm, color="black")+
+  labs(title="Relación de calorías en función de los minutos en una actividad física intensa", x="Minutos",y="Calorías", caption=paste("La línea negra representa correlación entre las variables, que es igual a",cor(x=daily_activity$very_active_minutes, y=daily_activity$calories)))
+cor(x=daily_activity$very_active_minutes, y=daily_activity$calories)
+summary(daily_activity$very_active_minutes)
+```
+##### Actividad física moderada
+
+Ahora se analizan los datos de la actividad física moderada. Sobre estos datos podemos decir que:
+
+* La media de la actividad física moderada es de 13.56 minutos diarios.
+* El valor mínimo es de 0 y el valor máximo es de 143 minutos diarios.
+* El 50% de los datos se encuentran entre 0 y 19 minutos.
+* La mediana de los datos es de 6 minutos.
+* La correlación entre los minutos de actividad física moderada y las calorías es positiva, con un valor de .297.
+
+```{r}
+ggplot(data = daily_activity)+
+  geom_point(mapping = aes(x=fairly_active_minutes, y=calories), color="red")+
+  geom_smooth(mapping = aes(x=fairly_active_minutes, y=calories),method=lm, color="black")+
+  labs(title="Relación de calorías en función de los minutos en una actividad física moderada", x="Minutos",y="Calorías", caption=paste("La línea negra representa correlación entre las variables, que es igual a",cor(x=daily_activity$fairly_active_minutes, y=daily_activity$calories)))
+cor(x=daily_activity$fairly_active_minutes, y=daily_activity$calories)
+summary(daily_activity$fairly_active_minutes)
+```
+
+##### Actividad física ligera
+
+Por su parte, la descripción sobre los datos de la actividad física ligera es la siguiente:
+
+* La media de la actividad física ligera es de 192.8 minutos diarios.
+* El valor mínimo es de 0 y el valor máximo es de 518 minutos diarios.
+* El 50% de los datos se encuentran entre los 127 y 264 minutos diarios.
+* La mediana de los datos es de 199 minutos.
+* La correlación entre los minutos de actividad física ligera y las calorías es positiva, con un valor de .286.
+
+```{r}
+ggplot(data = daily_activity)+
+  geom_point(mapping = aes(x=lightly_active_minutes, y=calories), color="orange")+
+  geom_smooth(mapping = aes(x=lightly_active_minutes, y=calories),method=lm, color="black")+
+  labs(title="Relación de calorías en función de los minutos en una actividad físca ligera", x="Minutos",y="Calorías", caption=paste("La línea negra representa correlación entre las variables, que es igual a",cor(x=daily_activity$lightly_active_minutes, y=daily_activity$calories)))
+cor(x=daily_activity$lightly_active_minutes, y=daily_activity$calories)
+summary(daily_activity$lightly_active_minutes)
+```
+
+Finalmente, se describen los datos acerca de los minutos diarios de actividad sedentaria:
+
+* La media de la la actividad sedentaria es de 1057.5 minutos diarios.
+* El valor mínimo es de 0 y el valor máximo es de 1440 minutos diarios.
+* El 50% de los datos se encuentran entre los 729.8 y los 1229.5 minutos diarios.
+* La mediana de los datos es de 1057.5 minutos.
+* La correlación entre los minutos de actividad física sedentaria y las calorias es negativa, con un valor de -.106.
+
+##### Actividad física sedentaría
+
+```{r}
+ggplot(data = daily_activity)+  
+  geom_point(mapping = aes(x=sedentary_minutes, y=calories), color="green")+
+  geom_smooth(mapping = aes(x=sedentary_minutes, y=calories),method=lm, color="black")+
+  labs(title="Relación de calorías en función de los minutos sedentario", x="Minutos",y="Calorías", caption=paste("La línea negra representa correlación entre las variables, que es igual a",cor(x=daily_activity$sedentary_minutes, y=daily_activity$calories)))
+cor(x=daily_activity$sedentary_minutes, y=daily_activity$calories)
+summary(daily_activity$sedentary_minutes)
+```
+
+Esos fueron los resultados de los datos analizados de la base de actividad diaria.
+
+#### Análisis de los datos del sueño
+
+El análisis a los datos refentes al sueño (sleep_day_merged) se realizó de la siguiente forma:  
+
+##### Horas de sueño
+
+Se creó una columna con las horas totales de sueño, a partir de los minutos totales de sueño dividiéndolos entre 60. De está forma se puede analizar los datos de una forma más práctica.
+```{r}
+sleep_day_merged <- mutate(sleep_day_merged, total_hours_asleep=round(total_minutes_asleep/60, 2), nsmall=4)
+```
+```{r}
+summary(sleep_day_merged$total_hours_asleep)
+```
+De estos datos se puede obtener lo siguiente:
+
+* La media de horas de sueño en la muestra es de 6.987 hrs.
+* El 50% de los registros se encuentra entre las ~6 y las ~8 horas.
+* El mínimo de horas fue menor a una hora.
+* Y el máximo de horas fue de poco más de 13 horas.
+
+##### Minutos en conciliar el sueño
+
+Por otro lado, también se creó una nueva columna llamada "time_to_fall_asleep", restando del tiempo total en cama, el tiempo total que durmieron, teniendo como sobrante, el tiempo que tardaron en quedarse dormidos.
+
+```{r}
+sleep_day_merged <- mutate(sleep_day_merged, time_to_fall_asleep=total_time_in_bed - total_minutes_asleep)
+```
+```{r}
+summary(sleep_day_merged$time_to_fall_asleep, sleep_day_merged$total_minutes_asleep)
+```
+
+De estos datos, se pude decir que:
+
+* El promedio del tiempo para quedarse dormido es de 39.31 minutos.
+* El mínimo es de 0 minutos y el máximo es de 371 minutos.
+* El 50% de los datos se encuentran entre 17 y 40 minutos.
+* La mediana de los datos es de 25.50 minutos.
+
+### Fase 5: Share
+
+#### Datos de la actividad diaria
+
+De los resultados del análisis de los datos de las actividades diarias podemos concluir que:
+
+```{r}
+ggplot(data = daily_activity)+
+  geom_smooth(mapping = aes(x=very_active_minutes, y=calories, color="Intensa"),method=lm)+
+  geom_smooth(mapping = aes(x=fairly_active_minutes, y=calories, color="Moderada"),method=lm)+
+  geom_smooth(mapping = aes(x=lightly_active_minutes, y=calories, color="Ligera"),method=lm)+
+  geom_smooth(mapping = aes(x=sedentary_minutes, y=calories, color="Sedentaria"),method=lm)+
+  labs(title="Correlación de calorías en función de los minutos en distintas actividades físicas", x="Minutos",y="Calorías",color="Legend")+
+  coord_cartesian(xlim = c(0, 300),ylim = c(1000, 3500))+
+  scale_color_manual(name="Intensidad de la actividad",
+                     breaks=c("Intensa","Moderada","Ligera","Sedentaria"),
+                     values=c("Intensa"="blue","Moderada"="red","Ligera"="orange","Sedentaria"="green"))
+```
+
+##### Tendencias sobre las diferentes actividades físicas encontradas:
+
+La correlación con la actividad intensa es la más fuerte, teniendo un valor de .61 podemos hablar de una relación fuerte entre las calorías gastadas y los minutos que las personas realizan actividades con esta intensidad. También podemos observar, que entre menor es la intensidad del ejercicio, menor es la correlación tiene con las calorías gastadas. Siguiendo con la actividad moderada y su correlación de.29, teniendo la relación, pero está siendo débil. Finalmente, la actividad ligera es la que menor correlación tiene, siendo su valor de .28.  
+Esto lo podemos interpretar como que una parte importante de las calorías gastadas, es que dentro de la rutina incluyas actividad física intensa, no habría que malinterpretar conque mientras más actividad física intensa hagas más calorías en total gastaras, ya que las calorías totales gastadas en un día también incluyen los otros dos tipos de actividades físicas, y si realizamos actividad intensa y omitimos las otras dos, podría ser contraproducente para nuestro objetivos, sin embargo, para afirmas esto, se tendría que contar con más datos y enfocar el estudio hacía esta relación. Finalmente, que entre más intensa sea la actividad, se tiende a que se realice menos número de veces, esto lo indica la mediana, que va disminuyen conforme la actividad se vuelve más intensa.  
+Por su parte, la actividad sedentario tiene su propia correlación, siendo negativa con un valor .10 , nos indica una relación inversamente proporcional débil, esto quiere decir que entre más actividad física sedentaria realices menos calorías gastaras y visceversa, lo cual hace sentido con la realidad.
+Sumando las dos parte, podríamos concluir que entre más intenso sea las actividad total del día, más calorías se gastarán, no solamente importa que no tengas momentos sedentaríos, si no que realmente hagas actividades físicas enfocadas en ser más intensas y por lo tanto, gastar más calorías.  
+
+#### Datos del sueño
+
+De los datos del sueño, se puede decir lo siguiente sobre las horas del sueño:
+
+```{r}
+ggplot(data=sleep_day_merged) +
+  geom_freqpoly(mapping = aes(x=total_hours_asleep))+
+  labs(title = "Horas de sueño", x="Número de horas de sueño",y="Número de registros")
+```
+```{r}
+summary(sleep_day_merged$total_hours_asleep)
+```
+De los datos de la muestra la media de horas de sueño en la muestra es de 6.987. Si bien, cada persona tiene necesidad fisiológicas distintas, se conoce actualmente que los ciclos del sueño se componen por hora y media, esto quiere decir, que las horas en las cuales se cumplen los ciclos serían a la 6ta y a la 7ma y media hora, por lo cual, la mayoría de persona despierta sin cumplir sus ciclos del sueño.  
+
+Por su parte, los datos del tiempo en que las personas tardan en quedar dormidos se pueden interpretar de la siguiente forma:
+```{r message=FALSE}
+ggplot(data=sleep_day_merged) +
+geom_freqpoly(mapping = aes(x=time_to_fall_asleep))+
+  labs(title = "Tiempo en quedarse dormidos", x="Minutos para quedarse dormido",y="Número de registros")
+```
+```{r}
+summary(sleep_day_merged$time_to_fall_asleep)
+```
+
+La media de tiempo que las personas de la muestra tardan en dormir es casi de 40 minutos, lo que deja en claro, que hay una dificultad para conciliar el sueño. Además, que la mayoría de personas tomen más de 15 minutos para dormir, aunado a que los datos más alejados de la media sean muy por encima de esta, nos dice que este problema para conciliar el sueño es un problema generalizado.
+
+##### Tendencias generales del sueño encontradas:  
+
+La población muestra problemas en la conciliación del sueño y en el tiempo que pueden dormir. Esto puede deberse a una mala higiene del sueño provocada por multiples factores, entre ellos, el trabajo, el estrés, los malos habitos en los horarios al dormir, etc. Y pueden tener relación entre sí, ya que el tiempo que se pierde en conciliar el sueño promedio es casi la mitad de un ciclo del sueño, por lo que si se redujera el tiempo necesario para quedarse dormido, podría ocuparse en dormir.
+
+### Fase 6: Act
+
+#### Las 4 tendecias encontradas en este análsis fueron:
+
+* Se encontró la tendencia que entre más tiempo realicen las personas actividad física intensa, más calorías totales gastarán en un día
+
+* Sí bien, hay una relación inversa entre las calorías gastadas por las personas y el tiempo que pasan siendo sedentaríos, es una relación muy débil, por lo que importa más lo que sí hacen en acitivdades físicas intensas y no lo que pasas siendo sedentarío.
+
+* Existe una tendencia a no cumplir con los ciclos de sueño, ya que las personas duermen menos de 7 horas y media, pero más de 6 horas.
+
+* Finalmente, hay un problema generalizado para conciliar el sueño, ya que las personas pueden tardar ~40 minutos en poder conciliar el sueño.
+
+#### Las las mejora enfocadas en los usuarios encontradas en el análisis son:
+
+* Mejorar la detección de tiempo estando en la cama, ya el tiempo, según algunos registros, es de 0 minutos, lo cual puede pasar, pero es poco probable.
+
+* Incentivar a los usuarios a realizar más tiempo actividades físicas intensas, ya que son las más relacionandas a las calorías gastadas pero las menos realizadas en número de veces, bien puede ser a tráves de distintos tipos de recomepas, por ejemplo, notificaciones felicitándolos por haber llegado a "X" tiempo de actividad intensa o con un sonido de fiesta al llegar.
+
+* Mostrarle al usuario la importancia de mantener sus datos actualizados, ya que se pensaban ocupar los datos de peso de la muestra, pero dado que solo 8 usuarios los tienen y a que en varios casos son como mucho un par de registros, se descartó utilizarlos.
+
+#### Las recomendaciones del enfoque de la campaña de marketing generados por este análisis son:
+
+* Mostrar casos en los cuáles, los usuarios, gracias a mantener un tracking y cumplir con ciertos objetivos, pudieron llegar a ciertas metas, ya sea de peso, pasos dados, distancia recorrida y esto cómo los hizo sentir.
+
+* Informar sobre cómo tener una buena higiene del sueño ayuda a mejorar la salud y en la vida diaria en general, y mejorar los hábitos poco a poco mediante el seguimiento de ciertas métricas.
